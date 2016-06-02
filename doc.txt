@@ -1,0 +1,55 @@
+                            COMMAND
+BROWSER
+click
+POST
+CMD=xx|PARAM=p1|p2|p3|>
+
+PHOTON     Particle.function("robotCmd", robotCmd);          // Declare the function used to handle the commands received
+function robotCmd
+digitalWrite(D0, HIGH); // interrupt the Robot
+send serial- RIOTsend
+0xFA 0xFB # C 0  a # P  b c # P d e  0xFE 0xFF 
+
+ROBOT
+void IntrIOT()  // IOT interrupt
+{
+    IntIOT = 1;
+    digitalWrite(Led_Blue, HIGH);  // turn on led
+}
+RIOTread
+RIOTgetTags
+robot_command (uint16_t *cmd, uint16_t *resp, uint8_t *resplen)
+send serial- RIOTsend
+0xFA 0xFB # R 0  a # P  b c # P d e  0xFE 0xFF 
+
+PHOTON
+RIOTread
+RIOTgetTags
+return integer
+
+BROWSER
+check return_value
+
+                            INFOS
+BROWSER
+every n seconds
+GET variable robotInfos
+json "aaa" : i, "bbb":  j
+
+
+PHOTON    Particle.variable("robotInfos", infos, STRING);   // Declare the variable used to provide infos
+every m seconds
+send serial- RIOTsend
+0xFA 0xFB # C 0  a # P b c # P d e  0xFE 0xFF 
+
+ROBOT
+RIOTread
+RIOTgetTags
+robot_command (uint16_t *cmd, uint16_t *resp, uint8_t *resplen)
+send serial- RIOTsend
+0xFA 0xFB # R 0  a # P b c # P d e  0xFE 0xFF 
+
+PHOTON
+RIOTread
+RIOTgetTags
+update variable robotInfos encoding json "aaa" : i, "bbb":  j

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+
+  <link rel="icon" href="png/faviconrobot.png">
+  <title> Robot</title>
+  
+  <!-- Bootstrap core CSS -->
+  <link href="bootstrap-3.3.6-dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap theme -->
+  <link href="bootstrap-3.3.6-dist/css/bootstrap-theme.min.css" rel="stylesheet">
+ 
+  <script type="text/javascript"  src="js/jquery-2.2.3.js"></script> 
+  <script src="bootstrap-3.3.6-dist/js/bootstrap.min.js"></script>
+
+  <link rel="stylesheet" type="text/css" href="css/slider.css" media="all" />
+  <script src="js/bootstrap-slider.js"></script>
+ 
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script src='js/compass.js'></script> 
+  <script type="text/javascript">
+
+    var deviceID    = "20002f001447343338333633";
+    var accessToken = "4fe8f0e9c0367676a0544a6baa29a2c3c3a8ab79";
+    var commandFunc = "robotCmd";
+    var infosFunc   = "robotInfos"
+    var lastCmd     = -1;
+    var refreshFreq = 60; // in sec
+    
+    var infos       =
+        {
+        "MotorState" : 0, 
+        "Direction" : 120,  
+        "Distance" : 0,   
+        "Temperature" : 0,
+        "Brightness"  : 0,
+        "Noise" : 0,
+        "AlertStatus" : 0,
+        "PictureNumber" : 0
+    };
+    
+    function displayStatus(motorState, distance, alertStatus)
+    {
+        var AlertList = ["No alert", "Alert Motion", "Alert Lux", "Alert Temperature", "Alert Noise"];
+
+        if (motorState == 1) {
+           $('#MotorStatusText').text('Motors started'); 
+           $("#MotorStatusId").removeClass('alert alert-danger');         
+           $("#MotorStatusId").addClass('alert alert-success');
+        }
+        else
+        {
+           $('#MotorStatusText').text('Motors stopped');
+           $("#MotorStatusId").removeClass('alert alert-sucess');                  
+           $("#MotorStatusId").addClass('alert alert-danger');
+        }
+         
+        if (distance > 0) {
+            $('#DistanceText').text('0bstacle: ' + distance + 'cm'); 
+            $("#DistanceId").removeClass('alert alert-info');
+            $("#DistanceId").addClass('alert alert-warning');
+            
+        }
+        else
+        {
+            $('#DistanceText').text('No obstacle'); 
+            $("#DistanceId").removeClass('alert alert-warning');        
+            $("#DistanceId").addClass('alert alert-info');
+        }       
+        
+        $('#AlertStatusText').text(AlertList[alertStatus]); 
+        if (alertStatus > 0) {
+           $("#AlertStatusId").removeClass('alert alert-info');
+           $("#AlertStatusId").addClass('alert alert-danger');
+            
+        }
+        else
+        {
+           $("#AlertStatusId").removeClass('alert alert-danger');          
+           $("#AlertStatusId").addClass('alert alert-info');
+        }
+
+    } //end function displayStatus
+     
+    function displayinfos()
+    {   
+       $("#InfosStatus").removeClass('text-danger lead');
+       $("#InfosStatus").addClass('text-success');
+
+       drawCompass(infos.Direction);
+       drawChart();
+       displayStatus(infos.MotorState, infos.Distance, infos.AlertStatus);   
+       document.getElementById("PictureNumber").innerHTML = infos.PictureNumber;    
+       document.getElementById("div_infos").innerHTML = 'MotorState: ' + infos.MotorState + ' - Direction:' + infos.Direction + ' - Distance:' + infos.Distance + ' - Temperature:' + infos.Temperature + ' - Brightness:' + infos.Brightness  + ' - Noise:' + infos.Noise + ' - Alert status:' + infos.AlertStatus + ' - Picture number: ' + infos.PictureNumber;
+    } // end function displayinfo
+          
+    function sendCommand()
+    {     
+       if(document.getElementById('Start').checked) {
+         console.log("Start checked");
+         if (lastCmd == -1) {
+            lastCmd = 2;
+            sparkPost('CMD=START|>');
+          }
+       }      
+       else if(document.getElementById('Stop').checked) {
+         console.log("Stop checked");
+         if (lastCmd == -1) {
+            lastCmd = 3;
+            sparkPost('CMD=STOP|>');     
+         }
+       }
+       else if(document.getElementById('CheckAround').checked) {
+         console.log("Check around");
+         if (lastCmd == -1) {
+            lastCmd = 4;
+            sparkPost('CMD=CHECK_AROUND|>');
+        }
+       }
+       else if(document.getElementById('Check').checked) {
+         console.log("Check");
+         if (lastCmd == -1) {
+            lastCmd = 5;
+            sparkPost('CMD=CHECK|>');
+         }
+       }
+       else if(document.getElementById('Turn').checked) {
+         console.log("Turn");
+         if (lastCmd == -1) {          
+            lastCmd = 6;
+            sparkPost('CMD=TURN' + '|PARAM=' + document.getElementById('TurnValue').value + '|>');                                     
+         }
+       }
+       else if(document.getElementById('Picture').checked) {
+         console.log("Picture checked");
+         if (lastCmd == -1) {
+            lastCmd = 7;
+            sparkPost('CMD=PICTURE|>'); 
+         }
+       } 
+       else if(document.getElementById('Alert').checked) {
+         console.log("Alert checked");
+         if (lastCmd == -1) {
+            lastCmd = 8;
+            sparkPost('CMD=ALERT|>');
+         }
+       }
+       else if(document.getElementById('Go').checked) {
+         console.log("Go checked");
+         if (lastCmd == -1) {
+            lastCmd = 9;
+            sparkPost('CMD=GO' + '|PARAM=' + document.getElementById('GoValue').value + '|>');                   
+         }
+       } 
+       else if(document.getElementById('MoveTitltPan').checked) {
+         console.log("MoveTitltPan checked");
+         if (lastCmd == -1) {
+            lastCmd = 10;
+            sparkPost('CMD=MOVE_TILT_PAN' + '|PARAM=' +  document.getElementById('HorizontalValue').value + '|' + document.getElementById('VerticalValue').value + '|>');                   
+         }
+       }
+       else if(document.getElementById('Infos').checked) {
+         console.log("Infos checked");
+         if (lastCmd == -1) {
+            lastCmd = 11;
+            refreshFreq = document.getElementById('InfosValue').value;
+            sparkPost('CMD=INFOS' + '|PARAM=' + document.getElementById('InfosValue').value + '|>');
+        }
+       }       
+       else if(document.getElementById('PI').checked) {
+         console.log("PI checked");
+         if (lastCmd == -1) {
+            lastCmd = 12;
+            sparkPost('CMD=PI' + '|PARAM=' + document.getElementById('PIactivate').value + '|' + document.getElementById('PIinfosValue').value + '|>');                   
+         }
+       }
+       else if(document.getElementById('Test').checked) {
+         console.log("Test checked");
+         if (lastCmd == -1) {
+            lastCmd = 99;
+            sparkPost('CMD=TEST' + '|PARAM=' + '12' + '|>');
+          }
+       }                              
+ 
+    } // function sendCommand
+    
+    
+    function sparkPost(command) {
+       $.ajaxSetup({timeout:60000}); //timeout:60 secs
+	   var requestURL = "https://api.particle.io/v1/devices/" + deviceID + "/" + commandFunc + "/";
+	   console.log(command);
+	   $('#CommandText').text("command send ..."); 
+       $("#CommandId").removeClass('alert alert-danger');                
+       $("#CommandId").addClass('alert alert-infos');
+ 	   
+ 
+       
+       $.post( requestURL,
+             { params: command, access_token: accessToken})
+             .done(function(data,status)
+             {
+                       console.log("Data: " + data + "\nStatus: " + status);
+                       result = JSON.parse(data.return_value);
+                       console.log("result: " + result);
+                             
+                       if (result < 0) alert ("error send command: " + result);
+                       else
+                       {
+                             switch (lastCmd)
+                             {                              
+                             case 2: //start
+                                   infos.MotorState = 1;
+                                   break;
+                             case 3: //stop
+                                   infos.MotorState = 0;
+                                   break;
+                             case 4: //check around
+                                   var tmptxt='?';
+                                   if      (result == 1) tmptxt = 'Left OK';
+                                   else if (result == 2) tmptxt = 'Right OK';
+                                   else                  tmptxt = 'Obstacle';
+                                   document.getElementById("CheckAroundResult").innerHTML = '<b>' + tmptxt + '</b>';
+                                   break;
+                             
+                             case 5: //Check
+                                   infos.AlertStatus = result;
+                                   break;
+                             
+                             case 7: // picture
+                             case 8: // alert
+                                   infos.PictureNumber = result;
+                                   break;
+                             
+                             case 11: // Infos                                  
+                                   GetInfos();
+                                   break;
+                                   
+                             case 99: // test
+                                   alert("Test sucessfull");
+                                   break;
+                             }
+                             $('#CommandText').text("command OK"); 
+                             $("#CommandId").removeClass('alert alert-danger');                
+                             $("#CommandId").addClass('alert alert-infos');
+ 
+                             displayinfos();
+                             lastCmd = -1;
+                       }     
+             }) 
+             .fail( function(xhr, textStatus, errorThrown) {
+                 console.log(errorThrown);
+                 $('#CommandText').text(errorThrown); 
+                 $("#CommandId").removeClass('alert alert-infos');                
+                 $("#CommandId").addClass('alert alert-danger');
+                 lastCmd = -1;
+ 
+             }); // end post
+    } // end sparkPost
+    
+    
+    function GetInfos ()
+    {
+      if (lastCmd = -1) {
+        console.log("startGetInfos");
+        $.ajaxSetup({timeout:40000}); //timeout:40 secs
+        var requestURL = "https://api.particle.io/v1/devices/" + deviceID + "/" + infosFunc + "?access_token=" + accessToken;
+       try {
+        $.get(requestURL,
+            function(data, status)
+            {
+               console.log("Data: " + data + "\nStatus: " + status);
+               infos = JSON.parse(data.result);
+               console.log(infos);
+               var d = new Date();
+               var t = d.toLocaleTimeString();
+               $("#InfosStatus").text('Last update: '+ t);
+               document.getElementById("uptime").innerHTML = t;
+              
+               displayinfos();
+            }
+        )
+        .fail(function(xhr, textStatus, errorThrown) {
+               console.log(errorThrown);
+               $("#InfosStatus").removeClass('text-sucess');              
+               $("#InfosStatus").addClass('text-danger lead');
+               $("#InfosStatus").text(errorThrown); 
+        });  // end get
+      }  
+     catch(e) {  console.log('error');} }
+      console.log(refreshFreq);
+      setTimeout(GetInfos, refreshFreq*1000);
+
+    }  // end GetInfos
+
+
+    google.charts.load('current', {'packages':['gauge']});
+    google.charts.setOnLoadCallback(drawChart);
+
+    function drawChart() {
+
+        var Temperaturedata = google.visualization.arrayToDataTable([
+          ['Label', 'Value'],
+          ['Temperature', infos.Temperature/100]
+        ]);
+        var Brightnessdata = google.visualization.arrayToDataTable([
+          ['Label', 'Value'],
+          ['Brightness', infos.Brightness]
+        ]);
+
+        var chart_Temperature = new google.visualization.Gauge(document.getElementById('div_Temperature'));
+        var Temperatureoptions = {
+          width: 400, height: 120,
+          min: 10, max: 40,
+          redFrom: 30, redTo: 40,
+          yellowFrom:25, yellowTo: 30,
+          greenFrom:20, greenTo: 25,
+          minorTicks: 5
+        };
+        chart_Temperature.draw(Temperaturedata, Temperatureoptions);
+      
+        var chart_Brightness = new google.visualization.Gauge(document.getElementById('div_Brightness'));       
+        var Brightnessoptions = {
+          width: 400, height: 120,
+          min: 0, max: 800,
+          redFrom: 300, redTo: 800,
+          greenFrom:0, greenTo: 300,
+          minorTicks: 50
+        };
+        chart_Brightness.draw(Brightnessdata, Brightnessoptions);
+
+    } //end function drawChart                      
+</script> 
+
+  <style>
+    /* Set height of the grid so .sidenav can be 100% (adjust as needed) */
+    .row.content {height: 550px}
+    
+    /* Set gray background color and 100% height */
+    .sidenav {
+      background-color: #f1f1f1;
+      height: 100%;
+    }
+        
+    /* On small screens, set height to 'auto' for the grid */
+    @media screen and (max-width: 767px) {
+      .row.content {height: auto;} 
+    }
+    /* Set black background color, white text and some padding */
+    footer {
+      background-color: #555;
+      color: white;
+      padding: 15px;
+    } 
+    /* Set black background color, white text and some padding */
+    header {
+      background-color: #555;
+      color: white;
+      padding: 15px;
+    }  
+
+    #Turn .slider-selection {
+            background: #BABABA;
+    }
+    #Vertical .slider-selection {
+            background: #BABABA;
+    }
+    #Horizontal .slider-selection {
+            background: #BABABA;
+    }
+    </style>
+</head>
+
+
+<body onload='init(); displayStatus(0, 0, 0); GetInfos();'>
+
+<header class="container-fluid text-center">
+ <h1>Robot</h1>
+</header>
+
+<div class="container-fluid">
+ <div class="row content">
+      
+ <div class="col-sm-9">       
+      <div class="row">
+        <div class="well col-sm-3">
+          <canvas id="compass" width="200" height="200"></canvas>  
+        </div>
+        <div class="well col-sm-2">
+          <div id="div_Temperature" style="width: 120px; height: 120px; float: left;"></div>
+        </div>
+        <div class="well col-sm-2">
+          <div id="div_Brightness" style="width: 120px; height: 120px; float: left;"></div> 
+        </div>               
+      </div>
+      
+      <div class="row">
+       <div class="col-sm-3">
+        <div id ="MotorStatusId" class="alert alert-danger">   
+         <p id="MotorStatusText">Motors stopped</p>
+        </div> 
+       </div> 
+       <div class="col-sm-3">
+        <div id ="DistanceId" class="alert alert-info">   
+         <p id="DistanceText">No Obstacle</p>
+        </div> 
+       </div>
+       <div class="col-sm-3">
+        <div id ="AlertStatusId" class="alert alert-info">   
+         <p id="AlertStatusText">No Alert</p>
+        </div> 
+       </div>
+       <div class="col-sm-3">
+        <div id ="CommandId" class="alert alert-info">   
+         <p id="CommandText"></p>
+        </div> 
+       </div>                    
+      </div>  
+           
+  </div>
+         
+ <div class="col-sm-9">      
+      <div class="row">
+        <div class="col-sm-2">
+         <div class="well">   
+          <div class="radio">
+           <label><input type="radio" name="command" id="Start" checked>Start</label>
+          </div> 
+         </div>
+        </div>
+        <div class="col-sm-2">
+         <div class="well">   
+          <div class="radio">
+            <label><input type="radio" name="command" id="Stop">Stop</label>
+          </div>
+         </div>
+        </div>
+        <div class="col-sm-4">
+         <div class="well">            
+          <div class="radio">
+           <label><input type="radio" name="command" id="Go">Go during: </label>
+           <input type="number" id="GoValue" min="0" max="3600" value="10" step = "10"><span>seconds</span>
+          </div> 
+         </div> 
+        </div>
+        <div class="col-sm-4">
+         <div class="well">
+          <div class="radio">
+           <label><input type="radio" name="command" id="Turn">Turn (-180&deg to +180&deg) </label> 
+           <input id="TurnValueId" data-slider-id='Turn' data-slider-handle="triangle" data-slider-min="-180" data-slider-max="180" data-slider-step="10" >
+          </div> 
+          <script type="text/javascript">
+           $('#TurnValueId').slider({
+            formatter: function(value) {
+               return 'Current value: ' + value;
+            }
+           });
+           $('.slider').on('slide', function (ev) {
+           TurnValue = $('#TurnValueId').val();
+           });
+          </script>
+          </div>
+        </div>                
+      </div>
+      
+      <div class="row">
+        <div class="col-sm-3">
+         <div class="well">
+          <div class="radio">
+           <label><input type="radio" name="command" id="Check">Check</label>
+          </div>
+         </div>
+        </div>
+        <div class="col-sm-3">
+         <div class="well">            
+          <div class="radio">
+           <label><input type="radio" name="command" id="CheckAround">Check around</label>
+           <span id="CheckAroundResult" style="font-size: 100%; font-weight: bold; color:Darkcyan"></span>
+          </div> 
+         </div> 
+        </div>  
+        <div class="col-sm-3">
+         <div class="well">   
+          <div class="radio">
+           <label><input type="radio" name="command" id="Alert">Alert</label>
+          </div> 
+         </div>
+        </div>
+        <div class="col-sm-3">
+         <div class="well">   
+          <div class="radio">  <label><input type="radio" name="command" id="Picture">Picture</label> (# 
+          <span id="PictureNumber" style="font-size: 100%; font-weight: bold; color: Darkcyan"></span>)
+          </div>
+         </div>
+        </div>
+      </div>
+   
+      <div class="row">
+        <div class="col-sm-4">
+         <div class="well" id="InfosStatusDiv">
+          <div class="radio">
+           <label><input type="radio" name="command" id="Infos"></label>
+           <span>Infos every: </span>
+           <input type="number" id="InfosValue" min="5" max="3600" value="60" step = "15"><span>seconds</span>
+           <span id="InfosStatus"></span>
+         </div>
+         </div>
+        </div>
+        <div class="col-sm-5">
+         <div class="well">            
+          <div class="radio">
+           <label><input class="radio" type="radio" name="command" id="PI">PI communication mode: </label>      
+            <select class="form-control" id="PIactivate">
+             <option value="0">no communication</option>
+             <option value="1">alerts only</option>
+             <option value="2">alerts & infos</option>
+            </select>
+            <script type="text/javascript">
+             $("#PIactivate").change(function(){
+                console.log($(this).val());
+                if ($(this).val() < 2) {
+                  document.getElementById('PIinfos').setAttribute('style','visibility:hidden');
+                }
+                else
+                {
+                  document.getElementById('PIinfos').setAttribute('style','visibility:visible');
+                }
+             });
+            </script>
+            <span id="PIinfos" style="visibility: hidden">Infos every: <input type="number" id="PIinfosValue" min="5" max="3600" value="60" step = "60">seconds</span>
+          </div> 
+         </div> 
+        </div> 
+        <div class="col-sm-3">
+         <div class="well">
+          <div class="radio">
+           <label><input type="radio" name="command" id="Test">Test Photon</label>
+          </div>
+         </div>
+        </div>
+      </div>
+             
+      <div class="row">
+        <div class="col-sm-9">
+         <div class="well">
+          <div class="radio">
+           <label><input type="radio" name="command" id="MoveTitltPan">Move TitltPan (-90&deg to +90&deg) </label>
+           <input id="VerticalValueId" data-slider-id='Vertical' data-slider-handle="triangle" data-slider-min="-90" data-slider-max="90" data-slider-step="10" data-slider-orientation="vertical" >
+           <input id="HorizontalValueId" data-slider-id='Horizontal' data-slider-handle="triangle" data-slider-min="-90" data-slider-max="90" data-slider-step="10" data-slider-orientation="horizontal" >
+          </div>    
+          <script type="text/javascript">
+           $('#VerticalValueId').slider({
+               formatter: function(value) {
+                  return 'Current value: ' + value;
+               }
+           });
+           $('#HorizontalValueId').slider({
+               formatter: function(value) {
+                  return 'Current value: ' + value;
+               }
+           });        
+           $('.slider').on('slide', function (ev) {
+           VerticalValue = $('#VerticalValueId').val();
+           });
+           $('.slider').on('slide', function (ev) {
+           HorizontalValue = $('#HorizontalValueId').val();
+           });
+          </script>            
+         </div>
+        </div>        
+        <div class="col-sm-3">
+           <button type="button" class="btn btn-primary btn-lg btn-block" onclick="sendCommand()">Valid</button>      
+        </div>     
+      </div>
+    
+ </div>
+ </div> 
+ </div>
+ 
+<footer class="container-fluid text-center">
+ <p id="uptime"></p>
+ <div id="div_infos">infos</div>
+</footer>
+
+
+</body>
+</html>
